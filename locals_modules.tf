@@ -82,7 +82,7 @@ locals {
 
   git_head_raw = {
     for k, d in local.git_dir : k => (
-      local.source_type[k] == "git" && d != "" ? trimspace(file("${d}/HEAD")) : ""
+      d != "" ? trimspace(file("${d}/HEAD")) : ""
     )
   }
 
@@ -106,7 +106,7 @@ locals {
   # containing regex metacharacters are handled correctly.
   git_packed_raw = {
     for k, d in local.git_dir : k => (
-      local.source_type[k] == "git" && d != "" && try(fileexists("${d}/packed-refs"), false)
+      d != "" && try(fileexists("${d}/packed-refs"), false)
       ? file("${d}/packed-refs") : ""
     )
   }
@@ -143,6 +143,18 @@ locals {
   git_src_plain  = { for k, m in local.mods : k => split("?", replace(m.source, "git::", ""))[0] }
   git_src_scheme = { for k, s in local.git_src_plain : k => split("://", s) }
 
+  # The `//subdir` portion, kept as its own field rather than folded into
+  # source_type: "is this git?" and "does it point at a subdirectory?" are
+  # orthogonal facts, and a fifth source_type value would silently stop matching
+  # every consumer's existing `source_type = 'git'` filter.
+  subdir = {
+    for k, m in local.mods : k => (
+      length(local.git_src_scheme[k]) > 1
+      ? try(split("//", local.git_src_scheme[k][1])[1], "n/a")
+      : try(split("//", local.git_src_scheme[k][0])[1], "n/a")
+    )
+  }
+
   git_package_key = {
     for k, m in local.mods : k => (
       local.source_type[k] != "git" ? "" : join("@", [
@@ -159,13 +171,20 @@ locals {
     pk => try([for s in shas : s if s != ""][0], "")
   }
 
+  git_sha_resolved = {
+    for k, m in local.mods : k => try([
+      for s in [local.git_sha_direct[k], try(local.git_shas_by_package[local.git_package_key[k]], "")] : s if s != ""
+    ][0], "")
+  }
+
+  # A registry module carries a commit only when the registry served it as a git
+  # clone rather than an archive; the version is its authoritative identity
+  # either way, so an archive-served module reports "n/a" rather than a failure.
   resolved_commit = {
     for k, m in local.mods : k => (
-      local.source_type[k] != "git" ? local.na[k] : coalesce(
-        local.git_sha_direct[k],
-        try(local.git_shas_by_package[local.git_package_key[k]], ""),
-        "unknown",
-      )
+      local.source_type[k] == "local" ? "n/a" :
+      local.source_type[k] == "git" ? (local.git_sha_resolved[k] != "" ? local.git_sha_resolved[k] : "unknown") :
+      local.git_sha_resolved[k] != "" ? local.git_sha_resolved[k] : local.na[k]
     )
   }
 
@@ -248,6 +267,7 @@ locals {
       ref_type         = local.ref_type[k]
       resolved_version = local.source_type[k] == "registry" ? (m.version != "" ? m.version : "unknown") : local.na[k]
       resolved_commit  = local.resolved_commit[k]
+      subdir           = local.subdir[k]
       content_hash     = local.content_hash[k]
       dir              = m.dir
     }
