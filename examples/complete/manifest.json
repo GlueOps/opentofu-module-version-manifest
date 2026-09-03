@@ -1,0 +1,240 @@
+{
+  "modules": {
+    "git_branch_main": {
+      "content_hash": "f6174313b352c4ecc4c29d17d882d51d9c153452befc3abfcc5f604711434cdb",
+      "declared_ref": "main",
+      "dir": ".terraform/modules/git_branch_main",
+      "ref_type": "branch",
+      "resolved_commit": "38364d79c1082de13373666252e1276975919543",
+      "resolved_version": "n/a",
+      "source": "git::https://github.com/cloudposse/terraform-null-label.git?ref=main",
+      "source_type": "git",
+      "subdir": "n/a"
+    },
+    "git_branch_master": {
+      "content_hash": "85cd1dfae1a5202be274fbcc14203268917dfc74d4a5fdc1876f322b2672f521",
+      "declared_ref": "master",
+      "dir": ".terraform/modules/git_branch_master",
+      "ref_type": "branch",
+      "resolved_commit": "f86cbe2f1041946b645f78da5bbbae8d62e4ffcd",
+      "resolved_version": "n/a",
+      "source": "git::https://github.com/hashicorp/terraform-cidr-subnets.git?ref=master",
+      "source_type": "git",
+      "subdir": "n/a"
+    },
+    "git_commit_sha": {
+      "content_hash": "b8711b66a773aa21e211daa0005d3165f44818e13028fbe66f173be5222dc9dc",
+      "declared_ref": "488ab91e34a24a86957e397d9f7262ec5925586a",
+      "dir": ".terraform/modules/git_commit_sha",
+      "ref_type": "commit",
+      "resolved_commit": "488ab91e34a24a86957e397d9f7262ec5925586a",
+      "resolved_version": "n/a",
+      "source": "git::https://github.com/cloudposse/terraform-null-label.git?ref=488ab91e34a24a86957e397d9f7262ec5925586a",
+      "source_type": "git",
+      "subdir": "n/a"
+    },
+    "git_default_branch": {
+      "content_hash": "f6174313b352c4ecc4c29d17d882d51d9c153452befc3abfcc5f604711434cdb",
+      "declared_ref": "n/a",
+      "dir": ".terraform/modules/git_default_branch",
+      "ref_type": "default_branch",
+      "resolved_commit": "38364d79c1082de13373666252e1276975919543",
+      "resolved_version": "n/a",
+      "source": "git::https://github.com/cloudposse/terraform-null-label.git",
+      "source_type": "git",
+      "subdir": "n/a"
+    },
+    "git_shorthand": {
+      "content_hash": "0f221c74eaee6affdfc428ad47048d79d18bf0d7c16f20aa9b5f80996459d3fc",
+      "declared_ref": "0.24.1",
+      "dir": ".terraform/modules/git_shorthand",
+      "ref_type": "tag",
+      "resolved_commit": "dc699992922b452ccc521c3dfe9c9c5c1f8376af",
+      "resolved_version": "n/a",
+      "source": "git::https://github.com/cloudposse/terraform-null-label.git?ref=0.24.1",
+      "source_type": "git",
+      "subdir": "n/a"
+    },
+    "git_subdir": {
+      "content_hash": "c391bb6c964b2d0a5ecbec1fa0c05cee9a4f65862af75b28d9e7252ad646e7f0",
+      "declared_ref": "0.23.0",
+      "dir": ".terraform/modules/git_subdir/exports",
+      "ref_type": "tag",
+      "resolved_commit": "6a7c42ef2105764b96d97e7d9ab9578dd1d83dd5",
+      "resolved_version": "n/a",
+      "source": "git::https://github.com/cloudposse/terraform-null-label.git//exports?ref=0.23.0",
+      "source_type": "git",
+      "subdir": "exports"
+    },
+    "git_subdir.this": {
+      "content_hash": "3f9e78a1b6da37d2c491a3b0b3c76b42ef98fa6502b9507b892b3c7fb1ad863d",
+      "declared_ref": "n/a",
+      "dir": ".terraform/modules/git_subdir.this",
+      "ref_type": "n/a",
+      "resolved_commit": "6a7c42ef2105764b96d97e7d9ab9578dd1d83dd5",
+      "resolved_version": "0.23.0",
+      "source": "registry.opentofu.org/cloudposse/label/null",
+      "source_type": "registry",
+      "subdir": "n/a"
+    },
+    "git_subdir_shared": {
+      "content_hash": "007ac3baf7c699e81b860838bb70f19f832989d76482d0d46a8ce799898e690a",
+      "declared_ref": "0.25.0",
+      "dir": ".terraform/modules/git_subdir_shared/exports",
+      "ref_type": "tag",
+      "resolved_commit": "488ab91e34a24a86957e397d9f7262ec5925586a",
+      "resolved_version": "n/a",
+      "source": "git::https://github.com/cloudposse/terraform-null-label.git//exports?ref=0.25.0",
+      "source_type": "git",
+      "subdir": "exports"
+    },
+    "git_subdir_shared.this": {
+      "content_hash": "b8711b66a773aa21e211daa0005d3165f44818e13028fbe66f173be5222dc9dc",
+      "declared_ref": "n/a",
+      "dir": ".terraform/modules/git_subdir_shared.this",
+      "ref_type": "n/a",
+      "resolved_commit": "488ab91e34a24a86957e397d9f7262ec5925586a",
+      "resolved_version": "0.25.0",
+      "source": "registry.opentofu.org/cloudposse/label/null",
+      "source_type": "registry",
+      "subdir": "n/a"
+    },
+    "git_tag_bare": {
+      "content_hash": "b8711b66a773aa21e211daa0005d3165f44818e13028fbe66f173be5222dc9dc",
+      "declared_ref": "0.25.0",
+      "dir": ".terraform/modules/git_tag_bare",
+      "ref_type": "tag",
+      "resolved_commit": "488ab91e34a24a86957e397d9f7262ec5925586a",
+      "resolved_version": "n/a",
+      "source": "git::https://github.com/cloudposse/terraform-null-label.git?ref=0.25.0",
+      "source_type": "git",
+      "subdir": "n/a"
+    },
+    "git_tag_prerelease": {
+      "content_hash": "dbd29b4fa1240269725634c924542ed52ec0db9968c8559a606688faf2ce12ff",
+      "declared_ref": "0.25.0-rc.1",
+      "dir": ".terraform/modules/git_tag_prerelease",
+      "ref_type": "tag",
+      "resolved_commit": "503f50c2fbf6974eee8091220ee3c246ba035931",
+      "resolved_version": "n/a",
+      "source": "git::https://github.com/cloudposse/terraform-null-label.git?ref=0.25.0-rc.1",
+      "source_type": "git",
+      "subdir": "n/a"
+    },
+    "git_tag_v_prefixed": {
+      "content_hash": "85cd1dfae1a5202be274fbcc14203268917dfc74d4a5fdc1876f322b2672f521",
+      "declared_ref": "v1.0.0",
+      "dir": ".terraform/modules/git_tag_v_prefixed",
+      "ref_type": "tag",
+      "resolved_commit": "52ca061aaea2e8f58c91ac03ca1fae45e44c28bf",
+      "resolved_version": "n/a",
+      "source": "git::https://github.com/hashicorp/terraform-cidr-subnets.git?ref=v1.0.0",
+      "source_type": "git",
+      "subdir": "n/a"
+    },
+    "local_path": {
+      "content_hash": "e4135bcb1fbbca443d24656ceac757f1837cf123aae29bcadc681481100230b9",
+      "declared_ref": "n/a",
+      "dir": "modules/greeting",
+      "ref_type": "n/a",
+      "resolved_commit": "n/a",
+      "resolved_version": "n/a",
+      "source": "./modules/greeting",
+      "source_type": "local",
+      "subdir": "n/a"
+    },
+    "local_path.nested": {
+      "content_hash": "cc12eb0ab8e291b2aee214e90fc4db3427b8f83a777b25b3928202910f468e42",
+      "declared_ref": "n/a",
+      "dir": "modules/greeting/nested",
+      "ref_type": "n/a",
+      "resolved_commit": "n/a",
+      "resolved_version": "n/a",
+      "source": "./nested",
+      "source_type": "local",
+      "subdir": "n/a"
+    },
+    "registry_exact_pin": {
+      "content_hash": "85cd1dfae1a5202be274fbcc14203268917dfc74d4a5fdc1876f322b2672f521",
+      "declared_ref": "n/a",
+      "dir": ".terraform/modules/registry_exact_pin",
+      "ref_type": "n/a",
+      "resolved_commit": "52ca061aaea2e8f58c91ac03ca1fae45e44c28bf",
+      "resolved_version": "1.0.0",
+      "source": "registry.opentofu.org/hashicorp/subnets/cidr",
+      "source_type": "registry",
+      "subdir": "n/a"
+    },
+    "registry_range_pin": {
+      "content_hash": "b8711b66a773aa21e211daa0005d3165f44818e13028fbe66f173be5222dc9dc",
+      "declared_ref": "n/a",
+      "dir": ".terraform/modules/registry_range_pin",
+      "ref_type": "n/a",
+      "resolved_commit": "n/a",
+      "resolved_version": "0.25.0",
+      "source": "registry.opentofu.org/cloudposse/label/null",
+      "source_type": "registry",
+      "subdir": "n/a"
+    },
+    "registry_unpinned": {
+      "content_hash": "b8711b66a773aa21e211daa0005d3165f44818e13028fbe66f173be5222dc9dc",
+      "declared_ref": "n/a",
+      "dir": ".terraform/modules/registry_unpinned",
+      "ref_type": "n/a",
+      "resolved_commit": "n/a",
+      "resolved_version": "0.25.0",
+      "source": "registry.opentofu.org/cloudposse/label/null",
+      "source_type": "registry",
+      "subdir": "n/a"
+    },
+    "version_manifest": {
+      "content_hash": "18963fd929e163cbfe69b438dbab199bbde68ec852cccd0ba9d41f1b7b3390e0",
+      "declared_ref": "n/a",
+      "dir": "../..",
+      "ref_type": "n/a",
+      "resolved_commit": "n/a",
+      "resolved_version": "n/a",
+      "source": "../..",
+      "source_type": "local",
+      "subdir": "n/a"
+    }
+  },
+  "producer": "GlueOps/opentofu-module-version-manifest",
+  "providers": {
+    "registry.opentofu.org/hashicorp/local": {
+      "constraints": "n/a",
+      "installed_binary_versions": [
+        "2.9.0"
+      ],
+      "version": "2.9.0"
+    },
+    "registry.opentofu.org/hashicorp/null": {
+      "constraints": "~> 3.2",
+      "installed_binary_versions": [
+        "3.3.1"
+      ],
+      "version": "3.3.1"
+    },
+    "registry.opentofu.org/hashicorp/random": {
+      "constraints": "3.9.0",
+      "installed_binary_versions": [
+        "3.9.0"
+      ],
+      "version": "3.9.0"
+    }
+  },
+  "root_config": {
+    "files": {
+      "main.tf": "c34c45b0c32d66dda8c8da89d9defe82a52719fd421c90af463f26080224a1ed"
+    },
+    "fingerprint": "e5540710cb51066dcc80a7e60c96168027369e12933b817dfe141140d8fff871",
+    "git_branch": "feat/opentofu-module-version-manifest",
+    "git_commit": "fe0808f9b8bcc250cff149fd836d38e3f47bb2fc",
+    "git_dirty": "unknown"
+  },
+  "schema": {
+    "major": 1,
+    "minor": 0
+  },
+  "workspace": "default"
+}
