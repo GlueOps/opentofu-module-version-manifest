@@ -123,13 +123,22 @@ locals {
 
   # --- local module content hashing ------------------------------------------
   # Local paths carry no version of any kind, so content is the only identity
-  # available. .git and .terraform are excluded: neither is module content.
+  # available.
+  #
+  # Only Terraform-relevant files are hashed, not every file in the directory. A
+  # module's identity is its Terraform source: a README edit or a generated file
+  # sitting in the same directory is not a change to the module. Hashing
+  # everything also makes the hash unstable whenever a tool writes output into
+  # the module directory, because that output feeds back into the next hash.
+  local_module_patterns = ["**/*.tf", "**/*.tf.json", "**/*.tftpl", "**/*.tpl"]
 
   local_files = {
-    for k, m in local.mods : k => sort([
-      for f in try(fileset("${path.root}/${m.dir}", "**"), []) : f
-      if !startswith(f, ".terraform/") && !startswith(f, ".git/")
-    ]) if local.source_type[k] == "local"
+    for k, m in local.mods : k => sort(distinct(flatten([
+      for pattern in local.local_module_patterns : [
+        for f in try(fileset("${path.root}/${m.dir}", pattern), []) : f
+        if !startswith(f, ".terraform/")
+      ]
+    ]))) if local.source_type[k] == "local"
   }
 
   content_hash = {

@@ -44,3 +44,9 @@ terraform.rc
 # planout
 
 .terraform.lock.hcl
+
+# The complete example's state and manifest ARE committed on purpose: they are the
+# documentation artifact showing what this module records. Safe because that example
+# uses only the random/null/local providers and public module sources, so it contains
+# no credentials. Do not add a secret-bearing provider or module to it.
+!examples/complete/terraform.tfstate
