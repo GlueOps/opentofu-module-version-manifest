@@ -19,7 +19,11 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "opentofu-module-version-manifest"
+      "package-name": "opentofu-module-version-manifest",
+      "extra-files": [
+        { "type": "generic", "path": "docs/.header.md" },
+        { "type": "generic", "path": "README.md" }
+      ]
     }
   }
 }

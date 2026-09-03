@@ -228,8 +228,8 @@
       "main.tf": "c34c45b0c32d66dda8c8da89d9defe82a52719fd421c90af463f26080224a1ed"
     },
     "fingerprint": "e5540710cb51066dcc80a7e60c96168027369e12933b817dfe141140d8fff871",
-    "git_branch": "feat/opentofu-module-version-manifest",
-    "git_commit": "fe0808f9b8bcc250cff149fd836d38e3f47bb2fc",
+    "git_branch": "ci/release-please-updates-readme-version",
+    "git_commit": "540dc036c4438a4bbf4c93ee415d4bd150ba3ee6",
     "git_dirty": "unknown"
   },
   "schema": {
