@@ -38,6 +38,12 @@ jobs:
         output-method: inject
         git-push: "false"
 
+    # The terraform-docs action is a Docker action running as root, which leaves
+    # root-owned objects in .git. Without this the commit step below fails with
+    # "insufficient permission for adding an object to repository database".
+    - name: Restore file ownership after the container step
+      run: sudo chown -R "$(id -u):$(id -g)" .
+
     - name: Commit regenerated docs and example
       run: |
         git config user.name "github-actions[bot]"
