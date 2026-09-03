@@ -7,7 +7,7 @@
 
 locals {
   lock_path = "${path.root}/.terraform.lock.hcl"
-  lock_raw  = fileexists(local.lock_path) ? file(local.lock_path) : ""
+  lock_raw  = try(fileexists(local.lock_path), false) ? file(local.lock_path) : ""
 
   # Stage 1: capture each `provider "<addr>" { ... }` block whole.
   # Non-greedy body up to the first line-initial `}` closes on the block, not on
@@ -38,9 +38,13 @@ locals {
   # duplicate keys in a for-expression are a hard error.
   provider_bins_grouped = { for i in local.provider_bin_pairs : i.address => i.version... }
 
+  # A list, always -- never a comma-joined string. A stale version directory can
+  # survive `init -upgrade`, so more than one binary genuinely can be present;
+  # emitting that as "3.8.0,3.9.0" would break any consumer casting the column to
+  # a version type. Normally exactly one element.
   providers_installed = {
     for address, versions in local.provider_bins_grouped :
-    address => join(",", distinct(versions))
+    address => sort(distinct(versions))
   }
 
   provider_addresses = distinct(concat(
@@ -50,9 +54,9 @@ locals {
 
   providers_out = {
     for a in local.provider_addresses : a => {
-      version                  = try(local.providers_locked[a].version, "unknown")
-      constraints              = try(local.providers_locked[a].constraints, "n/a")
-      installed_binary_version = try(local.providers_installed[a], "unknown")
+      version                   = try(local.providers_locked[a].version, "unknown")
+      constraints               = try(local.providers_locked[a].constraints, "n/a")
+      installed_binary_versions = try(local.providers_installed[a], [])
     }
   }
 }

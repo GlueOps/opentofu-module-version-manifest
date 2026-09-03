@@ -1,6 +1,19 @@
 locals {
   manifest = {
-    schema = 1
+    # Compatibility contract, see "Schema compatibility" in the README.
+    # major increments on any breaking change; minor on additive change only.
+    schema = {
+      major = 1
+      minor = 0
+    }
+
+    # Lets a consumer identify this record by shape rather than by the module
+    # call name, which the consuming configuration is free to choose.
+    producer = "GlueOps/opentofu-module-version-manifest"
+
+    # The only deployment identity available to configuration. Without it, two
+    # workspaces of the same root module produce byte-identical manifests.
+    workspace = terraform.workspace
 
     root_config = {
       files       = local.root_file_hashes

@@ -52,30 +52,45 @@ discovered automatically.
 
 The record is a JSON string stored in `terraform_data.manifest`.
 
-From `tofu show -json` (the `input` value comes back unwrapped):
+**Select on the payload, not on the module call name.** The name of the block is the
+consuming configuration's choice, and it may sit inside a wrapper module or use
+`for_each`. A selector that hard-codes a name returns nothing — and `jq` exits 0 — so
+a whole deployment silently reports as having no data. Match on `producer` instead,
+and treat a zero-row result as an error:
 
 ```sh
-tofu show -json \
-  | jq '.values.root_module.child_modules[]
-        | select(.address=="module.version_manifest")
-        | .resources[] | select(.type=="terraform_data")
-        | .values.input | fromjson'
+jq '[ .resources[]
+      | select(.mode=="managed" and .type=="terraform_data")
+      | . as $r | .instances[]
+      | (.attributes.input.value | fromjson) as $m
+      | select($m.producer? == "GlueOps/opentofu-module-version-manifest")
+      | { address: ($r.module // "root"), manifest: $m } ]' terraform.tfstate
 ```
 
-From the raw state file — note the `.value`, because `input` is typed `any` and is
-stored as `{"type":…,"value":…}`:
+Note `.attributes.input.value`: `input` is typed `any`, so state stores it as
+`{"type":…,"value":…}` — the payload is double-encoded JSON.
+
+`tofu show -json` also works and returns `.values.input` already unwrapped, but it
+requires an initialised working directory (`.terraform/` present) and so cannot read
+a state file on its own:
 
 ```sh
-jq -r '.resources[]
-       | select(.module=="module.version_manifest" and .type=="terraform_data")
-       | .instances[0].attributes.input.value | fromjson' terraform.tfstate
+tofu show -json | jq '[ .. | objects
+                        | select(.type? == "terraform_data")
+                        | .values.input? // empty | fromjson
+                        | select(.producer? == "GlueOps/opentofu-module-version-manifest") ]'
 ```
+
+Recursive descent (`..`) rather than `.values.root_module.child_modules[]`, because
+that path is one level deep and misses a nested module call.
 
 ## Output
 
 ```json
 {
-  "schema": 1,
+  "schema":    { "major": 1, "minor": 0 },
+  "producer":  "GlueOps/opentofu-module-version-manifest",
+  "workspace": "default",
   "root_config": {
     "files":       { "main.tf": "<sha256>" },
     "fingerprint": "<sha256 over the sorted per-file hashes>",
@@ -85,9 +100,9 @@ jq -r '.resources[]
   },
   "providers": {
     "registry.opentofu.org/hashicorp/random": {
-      "version":                  "3.9.0",
-      "constraints":              "~> 3.6",
-      "installed_binary_version": "3.9.0"
+      "version":                   "3.9.0",
+      "constraints":               "~> 3.6",
+      "installed_binary_versions": ["3.9.0"]
     }
   },
   "modules": {
@@ -98,19 +113,45 @@ jq -r '.resources[]
       "ref_type":         "branch",
       "resolved_version": "n/a",
       "resolved_commit":  "38364d79c1082de13373666252e1276975919543",
-      "content_hash":     "n/a",
+      "content_hash":     "<sha256>",
       "dir":              ".terraform/modules/from_git_branch"
     }
   }
 }
 ```
 
-`version` is what the lock file selected; `installed_binary_version` is the version
-whose binary is actually on disk under `.terraform/providers/`. They normally agree.
+`version` is what the lock file selected; `installed_binary_versions` lists the
+versions whose binaries are actually on disk under `.terraform/providers/`. It is
+**always a list**, normally of one element — a stale version directory can survive
+`init -upgrade`, and emitting that as a joined string would break a consumer casting
+the field to a version type.
 
-OpenTofu's own version and the apply counter are **not** in the manifest — config
-cannot read them (there is no `terraform.version`). They are already written natively
-to the top level of the same state file as `terraform_version`, `serial` and `lineage`.
+### Schema compatibility
+
+`schema.major` increments only on a breaking change; `schema.minor` on an additive
+one. Within a given `major`, this module guarantees:
+
+- fields are never removed, renamed, or retyped, and the meaning of a sentinel value
+  never changes;
+- fields **may** be added, and the value sets of `source_type` and `ref_type` **may**
+  grow.
+
+So a consumer should pin on `schema.major`, ignore fields it does not recognise, and
+treat an unrecognised `source_type` or `ref_type` as opaque rather than assuming it is
+one of the values below.
+
+### Deployment identity and time
+
+`workspace` is the only deployment identifier available to configuration; without it
+two workspaces of one root module produce byte-identical records.
+
+There is **no timestamp**, and no way to add one honestly. `plantimestamp()` changes
+on every plan, so putting it in the payload would make the resource show a diff on
+every `tofu plan` — and `terraform_data.input` updates in place regardless of
+`triggers_replace`, so it cannot be gated to recompute only on change. A state file
+carries no apply time either. `serial` orders applies **within one `lineage`** only,
+which is meaningless across repositories. A consumer that needs ordering must record
+its own ingestion time.
 
 ### `n/a` vs `unknown`
 
@@ -119,25 +160,53 @@ Strictly distinguished, never silently omitted:
 - **`n/a`** — not applicable to this source type (a registry module has no commit)
 - **`unknown`** — applicable, but could not be resolved
 
+A module whose source could not be classified (`source_type: "other"`) reports
+**`unknown`** for every derived field, never `n/a`: if we do not know what kind of
+source it is, we cannot claim a field is inapplicable to it. This matters for coverage
+metrics — counting unclassified sources as legitimately versionless hides blind spots
+exactly where they are most likely.
+
+### Value sets
+
+Closed for a given `schema.major`, but they may grow — treat unrecognised values as
+opaque rather than erroring:
+
+- `source_type`: `registry`, `git`, `local`, `other`
+- `ref_type`: `tag`, `branch`, `commit`, `default_branch`, `n/a`, `unknown`
+
 ### Coverage by module source type
 
 | Source type | `resolved_version` | `resolved_commit` | `content_hash` |
 |---|---|---|---|
-| Registry | ✅ | `n/a` | `n/a` |
-| Git tag (`?ref=v1.2.3`) | `n/a` | ✅ | `n/a` |
-| Git branch (`?ref=main`) | `n/a` | ✅ | `n/a` |
-| Git commit (`?ref=<sha>`) | `n/a` | ✅ | `n/a` |
-| Local path | `n/a` | `n/a` | ✅ |
+| Registry | ✅ | `n/a` | ✅ |
+| Git tag (`?ref=v1.2.3`) | `n/a` | ✅ | ✅ |
+| Git branch (`?ref=main`) | `n/a` | ✅ | ✅ |
+| Git commit (`?ref=<sha>`) | `n/a` | ✅ | ✅ |
+| Git, no ref (default branch) | `n/a` | ✅ | ✅ |
+| Git subdirectory (`//sub`) | `n/a` | ✅ *usually* — see below | ✅ |
+| Local path (incl. absolute) | `n/a` | `n/a` | ✅ |
+| Unclassified (`other`) | `unknown` | `unknown` | `unknown` |
+
+**The one case that can genuinely fail.** For `git::<url>//subdir`, the clone lives at
+the checkout root while `modules.json` points `Dir` at the subdirectory; both are
+searched, so the SHA resolves normally. But go-getter fetches a given repo+ref **once**
+and copies it — without `.git` — for any later caller of the same package. A `//subdir`
+module can therefore end up with no git metadata at all. Where a sibling module uses the
+same repo and ref, its SHA is authoritative for both and is used. Where none does,
+`resolved_commit` is `"unknown"` and `content_hash` is the only identity available.
 
 `ref_type` reports whether the declared ref was a `tag`, `branch`, `commit`, or the
 remote's `default_branch` — the source string alone cannot distinguish these, so it is
-derived from the clone's refs.
+derived from the clone's refs, read both loose (`.git/refs/…`) and packed. Reading only
+`packed-refs` would make the answer depend on whether the repository happened to have
+been garbage-collected. The commit-shaped heuristic is applied last, so a branch or tag
+legitimately named like a short hex string is still classified correctly.
 
-`content_hash` covers a local module's Terraform sources — `*.tf`, `*.tf.json`,
-`*.tftpl`, `*.tpl` — not every file in the directory. A module's identity is its
-Terraform source, so a README edit beside it is not a change to the module; hashing
-everything would also make the value unstable whenever a tool writes output into the
-module directory.
+`content_hash` covers Terraform sources — `*.tf`, `*.tf.json`, `*.tftpl`, `*.tpl` — for
+**every** module with a readable directory, not just local ones. A module's identity is
+its Terraform source: a README beside it is not part of the module, and hashing every
+file would make the value unstable whenever a tool writes output into the directory,
+because that output feeds back into the next hash.
 
 ## Example
 
@@ -255,6 +324,20 @@ module "git_shorthand" {
   source = "github.com/cloudposse/terraform-null-label?ref=0.24.1"
 }
 
+# Subdirectory of a git repo, at a ref used by no other module here: the clone
+# keeps its .git, so the SHA comes from its own checkout.
+module "git_subdir" {
+  source = "git::https://github.com/cloudposse/terraform-null-label.git//exports?ref=0.23.0"
+}
+
+# Subdirectory at the SAME repo and ref as git_tag_bare. go-getter fetches a
+# package once and copies it without .git for later callers, so this module has
+# no git metadata of its own -- its SHA is borrowed from the sibling that kept
+# the clone. Both must report the same commit.
+module "git_subdir_shared" {
+  source = "git::https://github.com/cloudposse/terraform-null-label.git//exports?ref=0.25.0"
+}
+
 # ---------------------------------------------------------------------------
 # Local filesystem sources
 # ---------------------------------------------------------------------------
@@ -284,20 +367,24 @@ are truncated here for width; the committed artifact has them in full.
 
 | Module | `source_type` | `declared_ref` | `ref_type` | `resolved_version` | `resolved_commit` | `content_hash` |
 | --- | --- | --- | --- | --- | --- | --- |
-| `git_branch_main` | `git` | `main` | `branch` | `n/a` | `38364d79c108…` | `n/a` |
-| `git_branch_master` | `git` | `master` | `branch` | `n/a` | `f86cbe2f1041…` | `n/a` |
-| `git_commit_sha` | `git` | `488ab91e34a24a86957e397d9f7262ec5925586a` | `commit` | `n/a` | `488ab91e34a2…` | `n/a` |
-| `git_default_branch` | `git` | `n/a` | `default_branch` | `n/a` | `38364d79c108…` | `n/a` |
-| `git_shorthand` | `git` | `0.24.1` | `tag` | `n/a` | `dc699992922b…` | `n/a` |
-| `git_tag_bare` | `git` | `0.25.0` | `tag` | `n/a` | `488ab91e34a2…` | `n/a` |
-| `git_tag_prerelease` | `git` | `0.25.0-rc.1` | `tag` | `n/a` | `503f50c2fbf6…` | `n/a` |
-| `git_tag_v_prefixed` | `git` | `v1.0.0` | `tag` | `n/a` | `52ca061aaea2…` | `n/a` |
+| `git_branch_main` | `git` | `main` | `branch` | `n/a` | `38364d79c108…` | `f6174313b352…` |
+| `git_branch_master` | `git` | `master` | `branch` | `n/a` | `f86cbe2f1041…` | `85cd1dfae1a5…` |
+| `git_commit_sha` | `git` | `488ab91e34a24a86957e397d9f7262ec5925586a` | `commit` | `n/a` | `488ab91e34a2…` | `b8711b66a773…` |
+| `git_default_branch` | `git` | `n/a` | `default_branch` | `n/a` | `38364d79c108…` | `f6174313b352…` |
+| `git_shorthand` | `git` | `0.24.1` | `tag` | `n/a` | `dc699992922b…` | `0f221c74eaee…` |
+| `git_subdir` | `git` | `0.23.0` | `tag` | `n/a` | `6a7c42ef2105…` | `c391bb6c964b…` |
+| `git_subdir.this` | `registry` | `n/a` | `n/a` | `0.23.0` | `n/a` | `3f9e78a1b6da…` |
+| `git_subdir_shared` | `git` | `0.25.0` | `tag` | `n/a` | `488ab91e34a2…` | `007ac3baf7c6…` |
+| `git_subdir_shared.this` | `registry` | `n/a` | `n/a` | `0.25.0` | `n/a` | `b8711b66a773…` |
+| `git_tag_bare` | `git` | `0.25.0` | `tag` | `n/a` | `488ab91e34a2…` | `b8711b66a773…` |
+| `git_tag_prerelease` | `git` | `0.25.0-rc.1` | `tag` | `n/a` | `503f50c2fbf6…` | `dbd29b4fa124…` |
+| `git_tag_v_prefixed` | `git` | `v1.0.0` | `tag` | `n/a` | `52ca061aaea2…` | `85cd1dfae1a5…` |
 | `local_path` | `local` | `n/a` | `n/a` | `n/a` | `n/a` | `e4135bcb1fbb…` |
 | `local_path.nested` | `local` | `n/a` | `n/a` | `n/a` | `n/a` | `cc12eb0ab8e2…` |
-| `registry_exact_pin` | `registry` | `n/a` | `n/a` | `1.0.0` | `n/a` | `n/a` |
-| `registry_range_pin` | `registry` | `n/a` | `n/a` | `0.25.0` | `n/a` | `n/a` |
-| `registry_unpinned` | `registry` | `n/a` | `n/a` | `0.25.0` | `n/a` | `n/a` |
-| `version_manifest` | `local` | `n/a` | `n/a` | `n/a` | `n/a` | `35aa4bae40d2…` |
+| `registry_exact_pin` | `registry` | `n/a` | `n/a` | `1.0.0` | `n/a` | `85cd1dfae1a5…` |
+| `registry_range_pin` | `registry` | `n/a` | `n/a` | `0.25.0` | `n/a` | `b8711b66a773…` |
+| `registry_unpinned` | `registry` | `n/a` | `n/a` | `0.25.0` | `n/a` | `b8711b66a773…` |
+| `version_manifest` | `local` | `n/a` | `n/a` | `n/a` | `n/a` | `c85be09196fd…` |
 
 Note what the three registry entries show: `registry_range_pin` was declared as
 `~> 0.25` and `registry_unpinned` declared no version at all, yet both record the
@@ -308,7 +395,7 @@ default branch.
 Providers are recorded with both the version the lock file selected and the version
 whose binary was actually on disk:
 
-| Provider | `constraints` | `version` | `installed_binary_version` |
+| Provider | `constraints` | `version` | `installed_binary_versions` |
 | --- | --- | --- | --- |
 | `local` | `n/a` | `2.9.0` | `2.9.0` |
 | `null` | `~> 3.2` | `3.3.1` | `3.3.1` |
@@ -325,7 +412,7 @@ file it was extracted from is at
 {
   "modules": {
     "git_branch_main": {
-      "content_hash": "n/a",
+      "content_hash": "f6174313b352c4ecc4c29d17d882d51d9c153452befc3abfcc5f604711434cdb",
       "declared_ref": "main",
       "dir": ".terraform/modules/git_branch_main",
       "ref_type": "branch",
@@ -335,7 +422,7 @@ file it was extracted from is at
       "source_type": "git"
     },
     "git_tag_bare": {
-      "content_hash": "n/a",
+      "content_hash": "b8711b66a773aa21e211daa0005d3165f44818e13028fbe66f173be5222dc9dc",
       "declared_ref": "0.25.0",
       "dir": ".terraform/modules/git_tag_bare",
       "ref_type": "tag",
@@ -355,7 +442,7 @@ file it was extracted from is at
       "source_type": "local"
     },
     "registry_range_pin": {
-      "content_hash": "n/a",
+      "content_hash": "b8711b66a773aa21e211daa0005d3165f44818e13028fbe66f173be5222dc9dc",
       "declared_ref": "n/a",
       "dir": ".terraform/modules/registry_range_pin",
       "ref_type": "n/a",
@@ -368,30 +455,39 @@ file it was extracted from is at
   "providers": {
     "registry.opentofu.org/hashicorp/local": {
       "constraints": "n/a",
-      "installed_binary_version": "2.9.0",
+      "installed_binary_versions": [
+        "2.9.0"
+      ],
       "version": "2.9.0"
     },
     "registry.opentofu.org/hashicorp/null": {
       "constraints": "~> 3.2",
-      "installed_binary_version": "3.3.1",
+      "installed_binary_versions": [
+        "3.3.1"
+      ],
       "version": "3.3.1"
     },
     "registry.opentofu.org/hashicorp/random": {
       "constraints": "3.9.0",
-      "installed_binary_version": "3.9.0",
+      "installed_binary_versions": [
+        "3.9.0"
+      ],
       "version": "3.9.0"
     }
   },
   "root_config": {
     "files": {
-      "main.tf": "c93feab59728536988cc658bfd412a6291de6647df10006508a58f69b690fa22"
+      "main.tf": "c34c45b0c32d66dda8c8da89d9defe82a52719fd421c90af463f26080224a1ed"
     },
-    "fingerprint": "98b03f4f3b18d4f5b5fd86ff5e5ae26b9ef0d2caabbdfb875ca1476db40e1857",
+    "fingerprint": "e5540710cb51066dcc80a7e60c96168027369e12933b817dfe141140d8fff871",
     "git_branch": "feat/opentofu-module-version-manifest",
-    "git_commit": "cf1127bab9e67d80cf5836af6952597242b8be1d",
+    "git_commit": "bb9ba51924a3448fea8a9b587de88670b42718f8",
     "git_dirty": "unknown"
   },
-  "schema": 1
+  "schema": {
+    "major": 1,
+    "minor": 0
+  }
 }
 ```
 <!-- END\_EXAMPLE -->
@@ -426,9 +522,12 @@ against the tree at `git_commit` itself.
 wrong answer.
 
 **Git SHA reading depends on go-getter's on-disk layout,** which is not a supported
-interface. OpenTofu leaves a real git clone in `.terraform/modules/<key>/` with a
-detached `HEAD` containing the raw SHA; this module falls back to loose refs and then
-`packed-refs`, and degrades to `"unknown"` rather than failing if none match.
+interface. OpenTofu leaves a real git clone under `.terraform/modules/`. When the source
+names a `?ref=` — branch, tag or commit — that clone's `HEAD` is detached and holds the
+raw SHA outright. When it names no ref, `HEAD` is instead a symref to the default
+branch, so the loose-ref read is a normal path, not a fallback; `packed-refs` is then
+read if the ref is packed, and the value degrades to `"unknown"` rather than failing if
+none match.
 
 ## Useful to know
 
@@ -458,19 +557,21 @@ The committed example artifacts and the Example section above are generated by:
 ./scripts/generate-example.sh
 ```
 
-CI runs the same script on every pull request and commits the result, so the
-example cannot drift from the code.
+CI runs the same script on every pull request and **fails if the committed artifacts
+are stale**, so the example cannot drift from the code. It does not commit for you:
+regenerating requires `tofu apply`, which downloads and executes third-party provider
+and module code, and that must not run in a job holding a token that can push.
 
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6.0 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
@@ -480,7 +581,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [terraform_data.manifest](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 
 ## Inputs
@@ -490,7 +591,7 @@ No inputs.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_manifest"></a> [manifest](#output\_manifest) | The version manifest as an object, for use elsewhere in the configuration. |
 | <a name="output_manifest_json"></a> [manifest\_json](#output\_manifest\_json) | The version manifest as a JSON string, identical to what is stored in state. |
 <!-- END_TF_DOCS -->

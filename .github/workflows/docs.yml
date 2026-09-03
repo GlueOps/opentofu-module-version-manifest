@@ -4,32 +4,34 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Read-only on purpose. This job runs `tofu init && tofu apply`, which downloads
+# and EXECUTES third-party provider binaries and module code. That must not
+# happen in a job holding a token that can push. The job therefore verifies the
+# committed artifacts rather than regenerating them in place; a maintainer
+# regenerates locally and commits, which also keeps every commit attributable to
+# a person (the repo ruleset requires extra approval for unattributed changes,
+# and a bot-pushed head SHA parks the required checks workflow).
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   docs:
     runs-on: ubuntu-latest
-    # A fork PR cannot be pushed to, so skip rather than fail the check.
-    # Maintainers regenerate on their own branch, or via workflow_dispatch.
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       with:
-        ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+        persist-credentials: false
 
     - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
       with:
         tofu_wrapper: false
 
-    # Applies examples/complete, extracts the manifest, and injects the Example
-    # section into docs/.header.md. Same script maintainers run locally.
+    # Must run the script unmodified rather than diffing raw apply output: the
+    # manifest's root_config.git_commit tracks the branch HEAD, so a naive diff
+    # would fail on every PR. The script's restore guard neutralizes exactly that.
     - name: Regenerate example artifacts
       run: ./scripts/generate-example.sh
 
-    # Runs after the header has been updated, so README.md picks up the new
-    # Example section in the same pass. git-push is false: the commit below
-    # carries the example artifacts too, which this action would not.
     - name: Render terraform docs
       uses: terraform-docs/gh-actions@6de6da0cefcc6b4b7a5cbea4d79d97060733093c # v1.4.1
       with:
@@ -38,20 +40,13 @@ jobs:
         output-method: inject
         git-push: "false"
 
-    # The terraform-docs action is a Docker action running as root, which leaves
-    # root-owned objects in .git. Without this the commit step below fails with
-    # "insufficient permission for adding an object to repository database".
-    - name: Restore file ownership after the container step
-      run: sudo chown -R "$(id -u):$(id -g)" .
-
-    - name: Commit regenerated docs and example
+    - name: Verify committed artifacts are up to date
       run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add -A
-        if git diff --staged --quiet; then
-          echo "No documentation changes."
-        else
-          git commit -m "docs: automated update of terraform docs and example manifest"
-          git push
+        # The terraform-docs action runs as root in a container.
+        sudo chown -R "$(id -u):$(id -g)" .
+        if ! git diff --exit-code --stat; then
+          echo "::error::Generated files are out of date. Run ./scripts/generate-example.sh locally and commit the result."
+          git diff
+          exit 1
         fi
+        echo "Generated files are up to date."

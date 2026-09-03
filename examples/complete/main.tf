@@ -102,6 +102,20 @@ module "git_shorthand" {
   source = "github.com/cloudposse/terraform-null-label?ref=0.24.1"
 }
 
+# Subdirectory of a git repo, at a ref used by no other module here: the clone
+# keeps its .git, so the SHA comes from its own checkout.
+module "git_subdir" {
+  source = "git::https://github.com/cloudposse/terraform-null-label.git//exports?ref=0.23.0"
+}
+
+# Subdirectory at the SAME repo and ref as git_tag_bare. go-getter fetches a
+# package once and copies it without .git for later callers, so this module has
+# no git metadata of its own -- its SHA is borrowed from the sibling that kept
+# the clone. Both must report the same commit.
+module "git_subdir_shared" {
+  source = "git::https://github.com/cloudposse/terraform-null-label.git//exports?ref=0.25.0"
+}
+
 # ---------------------------------------------------------------------------
 # Local filesystem sources
 # ---------------------------------------------------------------------------

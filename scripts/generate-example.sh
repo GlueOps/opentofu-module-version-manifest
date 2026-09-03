@@ -100,7 +100,7 @@ for addr in sorted(manifest["providers"]):
     p = manifest["providers"][addr]
     name = addr.rsplit("/", 1)[-1]
     prov.append(
-        f'| `{name}` | `{p["constraints"]}` | `{p["version"]}` | `{p["installed_binary_version"]}` |'
+        f'| `{name}` | `{p["constraints"]}` | `{p["version"]}` | `{", ".join(p["installed_binary_versions"]) or "none"}` |'
     )
 
 # An abridged excerpt: one representative entry per source shape.
@@ -143,7 +143,7 @@ default branch.
 Providers are recorded with both the version the lock file selected and the version
 whose binary was actually on disk:
 
-| Provider | `constraints` | `version` | `installed_binary_version` |
+| Provider | `constraints` | `version` | `installed_binary_versions` |
 | --- | --- | --- | --- |
 {chr(10).join(prov)}
 

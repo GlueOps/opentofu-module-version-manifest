@@ -32,20 +32,23 @@ locals {
     "${path.root}/../../../../../.git",
   ]
 
-  root_git_dir = try([for d in local.root_git_candidates : d if fileexists("${d}/HEAD")][0], "")
+  # Each candidate is guarded individually: fileexists THROWS on a path whose
+  # component is a file (a worktree/submodule `.git` file), and a try() around
+  # the whole comprehension would discard the entire walk on one bad candidate.
+  root_git_dir = try([for d in local.root_git_candidates : d if try(fileexists("${d}/HEAD"), false)][0], "")
 
   root_head_raw = local.root_git_dir != "" ? trimspace(file("${local.root_git_dir}/HEAD")) : ""
   root_head_sha = can(regex("^[0-9a-f]{40}$", local.root_head_raw)) ? local.root_head_raw : ""
   root_symref   = try(regex("^ref:\\s*(\\S+)$", local.root_head_raw)[0], "")
 
   root_loose_ref = (
-    local.root_symref != "" && local.root_git_dir != "" && fileexists("${local.root_git_dir}/${local.root_symref}")
+    local.root_symref != "" && local.root_git_dir != "" && try(fileexists("${local.root_git_dir}/${local.root_symref}"), false)
     ? trimspace(file("${local.root_git_dir}/${local.root_symref}"))
     : ""
   )
 
   root_packed_raw = (
-    local.root_git_dir != "" && fileexists("${local.root_git_dir}/packed-refs")
+    local.root_git_dir != "" && try(fileexists("${local.root_git_dir}/packed-refs"), false)
     ? file("${local.root_git_dir}/packed-refs")
     : ""
   )
