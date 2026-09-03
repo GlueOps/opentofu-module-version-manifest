@@ -458,13 +458,13 @@ example cannot drift from the code.
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6.0 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
@@ -474,7 +474,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [terraform_data.manifest](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 
 ## Inputs
@@ -484,7 +484,7 @@ No inputs.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_manifest"></a> [manifest](#output\_manifest) | The version manifest as an object, for use elsewhere in the configuration. |
 | <a name="output_manifest_json"></a> [manifest\_json](#output\_manifest\_json) | The version manifest as a JSON string, identical to what is stored in state. |
 <!-- END_TF_DOCS -->
