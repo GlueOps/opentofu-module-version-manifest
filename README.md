@@ -432,6 +432,12 @@ detached `HEAD` containing the raw SHA; this module falls back to loose refs and
 
 ## Useful to know
 
+`resolved_commit` is always a *commit* SHA, including for annotated tags. An
+annotated tag is its own git object, so `git ls-remote refs/tags/v1.0.0` reports the
+tag object rather than the commit — you need `refs/tags/v1.0.0^{}` for that. Because
+this module reads the checked-out `HEAD`, it records the peeled commit directly, which
+is the value you actually want when comparing against a repository's history.
+
 Plain `tofu init` does **not** re-fetch a module tracking a git branch — it stays at the
 already-cloned commit. Only `tofu init -upgrade` moves it. So a branch-sourced module is
 more stable across ordinary runs than it looks, but it does move silently on upgrade,
@@ -458,13 +464,13 @@ example cannot drift from the code.
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6.0 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
@@ -474,7 +480,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [terraform_data.manifest](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 
 ## Inputs
@@ -484,7 +490,7 @@ No inputs.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_manifest"></a> [manifest](#output\_manifest) | The version manifest as an object, for use elsewhere in the configuration. |
 | <a name="output_manifest_json"></a> [manifest\_json](#output\_manifest\_json) | The version manifest as a JSON string, identical to what is stored in state. |
 <!-- END_TF_DOCS -->
