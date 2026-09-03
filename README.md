@@ -42,7 +42,7 @@ which backs `terraform_data`. It is not downloaded and never appears in your
 <!-- x-release-please-start-version -->
 ```hcl
 module "version_manifest" {
-  source = "git::https://github.com/GlueOps/opentofu-module-version-manifest.git?ref=v0.0.1"
+  source = "git::https://github.com/GlueOps/opentofu-module-version-manifest.git?ref=v0.0.2"
 }
 ```
 <!-- x-release-please-end -->
